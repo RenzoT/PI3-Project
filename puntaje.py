@@ -28,11 +28,15 @@ for question in range(questions):
     for option in range(alternativas):
         if sheet.cell(row = option+2, column = question+2).value == 'X':
             totalAnswers += 1
-            print(option+1, " ", question)
-            if option+2 == correct[question]:
+            if option+2 == correct[question]+1:
                 correctas += 1
             else:
                 incorrectas += 1
+            if totalAnswers > 1:
+                correctas -= 1
 
 
+print("Correctas: ", correctas)
+print("Incorrectas: ", incorrectas)
+print("Blancas: ", questions - correctas - incorrectas)
 print(vCorrecta*correctas + vIncorrecta*incorrectas + vBlanco*(questions - correctas - incorrectas))
