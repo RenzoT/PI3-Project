@@ -4,14 +4,17 @@ wb = openpyxl.load_workbook('result.xlsx')
 sheet = wb.active
 
 #Parametros de usuario
-correct = [1, 4, 2, 4, 5]
-questions = 5
-alternativas = 5
+correct = []
+questions = int(input("¿Cuantas preguntas tiene el examen?: "))
+alternativas = int(input("¿Cuantas alternativas tiene cada pregunta?: \n"))
 
-vCorrecta = 5
-vIncorrecta = -1
-vBlanco = 0
-
+for i in range(1, questions + 1):
+    correct.append(ord((input("¿Cual es la respuesta correcta de la pregunta " + str(i) + "?: ")).upper())-64)
+    
+#Parametros de usuario
+vCorrecta = float(input("\n¿Cuantos puntos vale una respuesta correcta?: "))
+vIncorrecta = float(input("¿Cuantos puntos vale una respuesta incorrecta?: "))
+vBlanco = float(input("¿Cuantos puntos vale una respuesta en blanco?: "))
 
 #Detrás de escena
 correctas = 0
@@ -35,8 +38,10 @@ for question in range(questions):
             if totalAnswers > 1:
                 correctas -= 1
 
-
+print("--------------------")
+print("Resultado del examen")
+print("--------------------")
 print("Correctas: ", correctas)
 print("Incorrectas: ", incorrectas)
 print("Blancas: ", questions - correctas - incorrectas)
-print(vCorrecta*correctas + vIncorrecta*incorrectas + vBlanco*(questions - correctas - incorrectas))
+print("Puntaje", vCorrecta*correctas - vIncorrecta*incorrectas + vBlanco*(questions - correctas - incorrectas))
