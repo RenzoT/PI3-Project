@@ -58,7 +58,7 @@ def set_questions():
 #Parametros de usuario
 questions = int(input("¿Cuantas preguntas tiene el examen?: "))
 set_questions()
-alternativas = int(input("¿Cuantas alternativas tiene cada pregunta?: \n"))
+alternativas = int(input("¿Cuantas alternativas tiene cada pregunta?: "))
 vCorrecta = float(input("\n¿Cuantos puntos vale una respuesta correcta?: "))
 vIncorrecta = float(input("¿Cuantos puntos vale una respuesta incorrecta?: "))
 vBlanco = float(input("¿Cuantos puntos vale una respuesta en blanco?: "))
