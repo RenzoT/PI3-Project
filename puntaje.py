@@ -7,6 +7,7 @@ sheet = wb.active
 
 app = Tk()
 app.title("Corrector de examenes")
+app.configure(background='white')
 
 #Parametros privados
 col_answer = 0
@@ -31,7 +32,6 @@ def correct_exam():
                     correctas += 1
                 else:
                     incorrectas += 1
-                if totalAnswers > 1:
                     correctas -= 1
 
     print("--------------------")
@@ -44,13 +44,14 @@ def correct_exam():
 
 def set_questions():
     for i in range(1, questions + 1):
-        Label(app, text="Pregunta " + str(i) + ": ").grid(row=(i-1)%25, column=(ceil(i/25)-1)*2)
-        ans = Entry(app, width=2)
+        Label(app, text="Pregunta " + str(i) + ": ", bg="white").grid(row=(i-1)%25, column=(ceil(i/25)-1)*2)
+        ans = Entry(app, width=2, bg="#ECECEC")
         ans.grid(row=(i-1)%25,column= (ceil(i/25)-1)*2+1)
         answers.append(ans)
         last_row, last_col = (i-1)%25, (ceil(i/25)-1)*2+1
+
     Button(app, text="Atras").grid(row=last_row+1, column=last_col+1, sticky=W+E)
-    Button(app, text="Corregir", command=lambda : correct_exam() ).grid(row=last_row+1, column=last_col+2, sticky=W+E)
+    Button(app, text="Corregir", command=lambda : correct_exam(), bg="#42B4FF", fg="white").grid(row=last_row+1, column=last_col+2, sticky=W+E)
 
 
 
@@ -62,10 +63,5 @@ alternativas = int(input("¿Cuantas alternativas tiene cada pregunta?: "))
 vCorrecta = float(input("\n¿Cuantos puntos vale una respuesta correcta?: "))
 vIncorrecta = float(input("¿Cuantos puntos vale una respuesta incorrecta?: "))
 vBlanco = float(input("¿Cuantos puntos vale una respuesta en blanco?: "))
-
-
-
-#Buttons
-
 
 app.mainloop()
