@@ -68,6 +68,9 @@ def parameters(root):
                             incorrectas += 1
                             correctas -= 1
 
+            if puntaje < 0:
+                puntaje = 0
+
             print("--------------------")
             print("Resultado del examen")
             print("--------------------")
