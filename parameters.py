@@ -68,16 +68,18 @@ def parameters(root):
                             incorrectas += 1
                             correctas -= 1
 
+            puntaje = vCorrect*correctas - vIncorrect*incorrectas + vBlank*(questions - correctas - incorrectas)
+
             if puntaje < 0:
                 puntaje = 0
 
-            print("--------------------")
-            print("Resultado del examen")
-            print("--------------------")
+            print("----------------------")
+            print("|Resultado del examen|")
+            print("----------------------")
             print("Correctas: ", correctas)
             print("Incorrectas: ", incorrectas)
             print("Blancas: ", questions - correctas - incorrectas)
-            print("Puntaje", vCorrect*correctas - vIncorrect*incorrectas + vBlank*(questions - correctas - incorrectas))
+            print("Puntaje", puntaje)
 
         def set_questions():
             for i in range(1, questions + 1):
