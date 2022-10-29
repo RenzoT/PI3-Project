@@ -57,16 +57,20 @@ def parameters(root):
             for i in range(1, questions + 1):
                 correct.append(ord((answers[i-1].get()).upper())-64)
 
+
             for question in range(questions):
+                print(correctas)
                 totalAnswers = 0
                 for option in range(options):
                     if sheet.cell(row = option+2, column = question+2).value == 'X':
                         totalAnswers += 1
-                        if option+2 == correct[question]+1:
+                        if option+2 == correct[question]+1 and totalAnswers == 1:
                             correctas += 1
-                        else:
+                        elif totalAnswers > 1:
                             incorrectas += 1
                             correctas -= 1
+                        else:
+                            incorrectas += 1
 
             puntaje = vCorrect*correctas - vIncorrect*incorrectas + vBlank*(questions - correctas - incorrectas)
 
@@ -80,6 +84,24 @@ def parameters(root):
             print("Incorrectas: ", incorrectas)
             print("Blancas: ", questions - correctas - incorrectas)
             print("Puntaje", puntaje)
+
+            table_result = openpyxl.Workbook()
+            table_sheet = table_result.active
+
+            table_sheet.cell(row = 1, column = 1).value = "Identificador"
+            table_sheet.cell(row = 1, column = 2).value = "Correctas"
+            table_sheet.cell(row = 1, column = 3).value = "Incorrectas"
+            table_sheet.cell(row = 1, column = 4).value = "Blancas"
+            table_sheet.cell(row = 1, column = 5).value = "Puntaje"
+
+            table_sheet.cell(row = 2, column = 1).value = "Alumno 1"
+            table_sheet.cell(row = 2, column = 2).value = correctas
+            table_sheet.cell(row = 2, column = 3).value = incorrectas
+            table_sheet.cell(row = 2, column = 4).value = questions - correctas - incorrectas
+            table_sheet.cell(row = 2, column = 5).value = puntaje
+
+            table_result.save('results.xlsx')
+
 
         def set_questions():
             for i in range(1, questions + 1):
