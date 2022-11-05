@@ -1,6 +1,12 @@
 import openpyxl
 from tkinter import *
 from math import ceil as ceil
+from imutils.perspective import four_point_transform
+from imutils import contours
+import numpy as np
+import argparse
+import imutils
+import cv2
 
 def close_window(root):
     root.destroy()
@@ -17,7 +23,6 @@ def parameters(root):
     Label(param, text="Parámetros del examen:", font=("Futura Md BT", 30),bg="white").grid(row=0, column=0,padx=30, pady=20,sticky=W)
 
     Label(param, text="¿Cuántas preguntas tiene el examen?", font=("Futura Bk BT", 23),bg="white").grid(row=1, column=0,padx=60,  pady=20,sticky=W)
-    Label(param, text="¿Cuántas alternativas tiene cada pregunta?", font=("Futura Bk BT", 23),bg="white").grid(row=2, column=0,padx=60, pady=20,sticky=W)
 
     Label(param, text="¿Cuántos puntos vale una\nrespuesta correcta?", font=("Futura Bk BT", 23),bg="white").grid(row=3, column=0,padx=60, pady=20,sticky=W)
 
@@ -27,8 +32,6 @@ def parameters(root):
     #Entrys
     txtQuestions = Entry(param, width=5, bg="#ECECEC", font= ("Futura Bk BT", 23))
     txtQuestions.grid(row=1, column=1, pady=20,sticky=W)
-    txtOptions = Entry(param, width=5, bg="#ECECEC", font= ("Futura Bk BT", 23))
-    txtOptions.grid(row=2, column=1, pady=20,sticky=W)
     txtCorrect = Entry(param, width=5, bg="#ECECEC", font= ("Futura Bk BT", 23))
     txtCorrect.grid(row=3, column=1, pady=20,sticky=W)
     txtIncorrect = Entry(param, width=5, bg="#ECECEC", font= ("Futura Bk BT", 23))
@@ -40,9 +43,6 @@ def parameters(root):
         puntaje = Toplevel()
         puntaje.title("Corrector de Examenes")
         puntaje.configure(background='white')
-    
-        wb = openpyxl.load_workbook('result.xlsx')
-        sheet = wb.active
 
         #Privados
         col_answer = 0
@@ -52,59 +52,92 @@ def parameters(root):
         answers = []
 
         def correct_exam():
-            correctas = 0
-            incorrectas = 0
-            for i in range(1, questions + 1):
-                correct.append(ord((answers[i-1].get()).upper())-64)
+            ANSWER_KEY = {}
+
+            for i in range(0, nroQuestions):
+                ANSWER_KEY[i] = ord((answers[i].get()).upper())-65
+
+            print(ANSWER_KEY)
+
+            image = cv2.imread("cartillas/prueba.jpg")
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+            edged = cv2.Canny(blurred, 75, 200)
+
+            cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL,
+                cv2.CHAIN_APPROX_SIMPLE)
+            cnts = imutils.grab_contours(cnts)
+            docCnt = None
+
+            if len(cnts) > 0:
+                cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
+                for c in cnts:
+
+                    peri = cv2.arcLength(c, True)
+                    approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+
+                    if len(approx) == 4:
+                        docCnt = approx
+                        break
+                    
+            paper = four_point_transform(image, docCnt.reshape(4, 2))
+            warped = four_point_transform(gray, docCnt.reshape(4, 2))
+
+            thresh = cv2.threshold(warped, 0, 255,
+                cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
+
+            cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
+                cv2.CHAIN_APPROX_SIMPLE)
+            cnts = imutils.grab_contours(cnts)
+            questionCnts = []
+
+            for c in cnts:
+                (x, y, w, h) = cv2.boundingRect(c)
+                ar = w / float(h)
+                if w >= 20 and h >= 20 and ar >= 0.9 and ar <= 1.1:
+                    questionCnts.append(c)
+
+            questionCnts = contours.sort_contours(questionCnts,
+                method="top-to-bottom")[0]
+            correct = 0
+
+            for (q, i) in enumerate(np.arange(0, len(questionCnts), 5)):
+                cnts = contours.sort_contours(questionCnts[i:i + 5])[0]
+                bubbled = None
+
+                for (j, c) in enumerate(cnts):
+                    mask = np.zeros(thresh.shape, dtype="uint8")
+                    cv2.drawContours(mask, [c], -1, 255, -1)
 
 
-            for question in range(questions):
-                print(correctas)
-                totalAnswers = 0
-                for option in range(options):
-                    if sheet.cell(row = option+2, column = question+2).value == 'X':
-                        totalAnswers += 1
-                        if option+2 == correct[question]+1 and totalAnswers == 1:
-                            correctas += 1
-                        elif totalAnswers > 1:
-                            incorrectas += 1
-                            correctas -= 1
-                        else:
-                            incorrectas += 1
+                    mask = cv2.bitwise_and(thresh, thresh, mask=mask)
+                    total = cv2.countNonZero(mask)
 
-            puntaje = vCorrect*correctas - vIncorrect*incorrectas + vBlank*(questions - correctas - incorrectas)
+                    if bubbled is None or total > bubbled[0]:
+                        bubbled = (total, j)
 
-            if puntaje < 0:
-                puntaje = 0
+                color = (0, 0, 255)
+                k = ANSWER_KEY[q]
 
-            print("----------------------")
-            print("|Resultado del examen|")
-            print("----------------------")
-            print("Correctas: ", correctas)
-            print("Incorrectas: ", incorrectas)
-            print("Blancas: ", questions - correctas - incorrectas)
-            print("Puntaje", puntaje)
+                if k == bubbled[1]:
+                    color = (0, 255, 0)
+                    correct += 1
 
-            table_result = openpyxl.Workbook()
-            table_sheet = table_result.active
+                # draw the outline of the correct answer on the test
+                cv2.drawContours(paper, [cnts[k]], -1, color, 3)
 
-            table_sheet.cell(row = 1, column = 1).value = "Identificador"
-            table_sheet.cell(row = 1, column = 2).value = "Correctas"
-            table_sheet.cell(row = 1, column = 3).value = "Incorrectas"
-            table_sheet.cell(row = 1, column = 4).value = "Blancas"
-            table_sheet.cell(row = 1, column = 5).value = "Puntaje"
-
-            table_sheet.cell(row = 2, column = 1).value = "Alumno 1"
-            table_sheet.cell(row = 2, column = 2).value = correctas
-            table_sheet.cell(row = 2, column = 3).value = incorrectas
-            table_sheet.cell(row = 2, column = 4).value = questions - correctas - incorrectas
-            table_sheet.cell(row = 2, column = 5).value = puntaje
-
-            table_result.save('results.xlsx')
+            # grab the test taker
+            score = correct * vCorrect - (nroQuestions - correct) * vIncorrect - vBlank * (nroQuestions - correct - vCorrect)
+            print("[INFO] score: {:.2f}".format(score))
+            cv2.putText(paper, "Puntaje: {:.2f}".format(score), (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
+            cv2.imshow("Correction", paper)
+            cv2.waitKey(0)
+            
 
 
         def set_questions():
-            for i in range(1, questions + 1):
+            for i in range(1, nroQuestions + 1):
                 Label(puntaje, text="Pregunta " + str(i) + ": ", bg="white").grid(row=(i-1)%25, column=(ceil(i/25)-1)*2)
                 ans = Entry(puntaje, width=2, bg="#ECECEC")
                 ans.grid(row=(i-1)%25,column= (ceil(i/25)-1)*2+1)
@@ -115,9 +148,8 @@ def parameters(root):
             Button(puntaje, text="Corregir", command=lambda : correct_exam(), bg="#42B4FF", fg="white").grid(row=last_row+1, column=last_col+2, sticky=W+E)
 
         #Parametros
-        questions = int(txtQuestions.get())
+        nroQuestions = int(txtQuestions.get())
         set_questions()
-        options = int(txtOptions.get())
         vCorrect = float(txtCorrect.get())
         vIncorrect = float(txtIncorrect.get())
         vBlank = float(txtBlank.get())

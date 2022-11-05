@@ -1,183 +1,133 @@
-import cv2
+# import the necessary packages
+from imutils.perspective import four_point_transform
+from imutils import contours
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import csv
-try:
-    from PIL import Image
-except ImportError:
-    import Image
-import pytesseract
+import argparse
+import imutils
+import cv2
 
-pytesseract.pytesseract.tesseract_cmd = 'C:/Program Files (x86)/Tesseract-OCR/tesseract.exe'
+ANSWER_KEY = {}
 
-#read your file
-file=r'images/prueba.png'
-img = cv2.imread(file,0)
-img.shape
-#thresholding the image to a binary image
-thresh,img_bin = cv2.threshold(img,128,255,cv2.THRESH_BINARY |cv2.THRESH_OTSU)
-#inverting the image 
-img_bin = 255-img_bin
-cv2.imwrite('carts/cv_inverted.png',img_bin)
-#Plotting the image to see the output
-plotting = plt.imshow(img_bin,cmap='gray')
-plt.show()
+nQuestions = int(input("Numero de preguntas: "))
 
-# Length(width) of kernel as 100th of total width
-kernel_len = np.array(img).shape[1]//100
-# Defining a vertical kernel to detect all vertical lines of image 
-ver_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, kernel_len))
-# Defining a horizontal kernel to detect all horizontal lines of image
-hor_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_len, 1))
-# A kernel of 2x2
-kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+for i in range(0, nQuestions):
+    rpta = input("Respuesta de la pregunta " + str(i+1) + ": ")
+    ANSWER_KEY[i] = ord(rpta.upper())-65
 
-#Use vertical kernel to detect and save the vertical lines in a jpg
-image_1 = cv2.erode(img_bin, ver_kernel, iterations=3)
-vertical_lines = cv2.dilate(image_1, ver_kernel, iterations=3)
-cv2.imwrite("carts/vertical.jpg",vertical_lines)
-#Plot the generated image
-plotting = plt.imshow(image_1,cmap='gray')
-plt.show()
+# load the image, convert it to grayscale, blur it
+# slightly, then find edges
+image = cv2.imread("cartillas/prueba.jpg")
+gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+edged = cv2.Canny(blurred, 75, 200)
 
-#Use horizontal kernel to detect and save the horizontal lines in a jpg
-image_2 = cv2.erode(img_bin, hor_kernel, iterations=3)
-horizontal_lines = cv2.dilate(image_2, hor_kernel, iterations=3)
-cv2.imwrite("carts/horizontal.jpg",horizontal_lines)
-#Plot the generated image
-plotting = plt.imshow(image_2,cmap='gray')
-plt.show()
+# find contours in the edge map, then initialize
+# the contour that corresponds to the document
+cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL,
+	cv2.CHAIN_APPROX_SIMPLE)
+cnts = imutils.grab_contours(cnts)
+docCnt = None
 
-# Combine horizontal and vertical lines in a new third image, with both having same weight.
-img_vh = cv2.addWeighted(vertical_lines, 0.5, horizontal_lines, 0.5, 0.0)
-#Eroding and thesholding the image
-img_vh = cv2.erode(~img_vh, kernel, iterations=2)
-thresh, img_vh = cv2.threshold(img_vh,128,255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-cv2.imwrite("carts/img_vh.jpg", img_vh)
-bitxor = cv2.bitwise_xor(img,img_vh)
-bitnot = cv2.bitwise_not(bitxor)
-#Plotting the generated image
-plotting = plt.imshow(bitnot,cmap='gray')
-plt.show()
+# ensure that at least one contour was found
+if len(cnts) > 0:
+	# sort the contours according to their size in
+	# descending order
+	cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
 
-# Detect contours for following box detection
-contours, hierarchy = cv2.findContours(img_vh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+	# loop over the sorted contours
+	for c in cnts:
+		# approximate the contour
+		peri = cv2.arcLength(c, True)
+		approx = cv2.approxPolyDP(c, 0.02 * peri, True)
 
-def sort_contours(cnts, method="left-to-right"):
-    # initialize the reverse flag and sort index
-    reverse = False
-    i = 0
-    # handle if we need to sort in reverse
-    if method == "right-to-left" or method == "bottom-to-top":
-        reverse = True
-    # handle if we are sorting against the y-coordinate rather than
-    # the x-coordinate of the bounding box
-    if method == "top-to-bottom" or method == "bottom-to-top":
-        i = 1
-    # construct the list of bounding boxes and sort them from top to
-    # bottom
-    boundingBoxes = [cv2.boundingRect(c) for c in cnts]
-    (cnts, boundingBoxes) = zip(*sorted(zip(cnts, boundingBoxes),
-    key=lambda b:b[1][i], reverse=reverse))
-    # return the list of sorted contours and bounding boxes
-    return (cnts, boundingBoxes)
+		# if our approximated contour has four points,
+		# then we can assume we have found the paper
+		if len(approx) == 4:
+			docCnt = approx
+			break
 
-# Sort all the contours by top to bottom.
-contours, boundingBoxes = sort_contours(contours, method="top-to-bottom")
+# apply a four point perspective transform to both the
+# original image and grayscale image to obtain a top-down
+# birds eye view of the paper
+paper = four_point_transform(image, docCnt.reshape(4, 2))
+warped = four_point_transform(gray, docCnt.reshape(4, 2))
 
-#Creating a list of heights for all detected boxes
-heights = [boundingBoxes[i][3] for i in range(len(boundingBoxes))]
-#Get mean of heights
-mean = np.mean(heights)
+# apply Otsu's thresholding method to binarize the warped
+# piece of paper
+thresh = cv2.threshold(warped, 0, 255,
+	cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
 
-#Create list box to store all boxes in  
-box = []
-# Get position (x,y), width and height for every contour and show the contour on image
-for c in contours:
-    x, y, w, h = cv2.boundingRect(c)
-    if (w<1000 and h<500):
-        image = cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
-        box.append([x,y,w,h])
-plotting = plt.imshow(image,cmap='gray')
-plt.show()
+# find contours in the thresholded image, then initialize
+# the list of contours that correspond to questions
+cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
+	cv2.CHAIN_APPROX_SIMPLE)
+cnts = imutils.grab_contours(cnts)
+questionCnts = []
 
-#Creating two lists to define row and column in which cell is located
-row=[]
-column=[]
-j=0
-#Sorting the boxes to their respective row and column
-for i in range(len(box)):
-    if(i==0):
-        column.append(box[i])
-        previous=box[i]
-    else:
-        if(box[i][1]<=previous[1]+mean/2):
-            column.append(box[i])
-            previous=box[i]
-            if(i==len(box)-1):
-                row.append(column)
-        else:
-            row.append(column)
-            column=[]
-            previous = box[i]
-            column.append(box[i])
-#print(column)
-#print(row)
+# loop over the contours
+for c in cnts:
+	# compute the bounding box of the contour, then use the
+	# bounding box to derive the aspect ratio
+	(x, y, w, h) = cv2.boundingRect(c)
+	ar = w / float(h)
 
-#calculating maximum number of cells
-countcol = 0
-for i in range(len(row)):
-    countcol = len(row[i])
-    if countcol > countcol:
-        countcol = countcol
+	# in order to label the contour as a question, region
+	# should be sufficiently wide, sufficiently tall, and
+	# have an aspect ratio approximately equal to 1
+	if w >= 20 and h >= 20 and ar >= 0.9 and ar <= 1.1:
+		questionCnts.append(c)
 
-#Retrieving the center of each column
-center = [int(row[i][j][0]+row[i][j][2]/2) for j in range(len(row[i])) if row[0]]
-center=np.array(center)
-center.sort()
+        # sort the question contours top-to-bottom, then initialize
+# the total number of correct answers
+questionCnts = contours.sort_contours(questionCnts,
+	method="top-to-bottom")[0]
+correct = 0
 
-#Regarding the distance to the columns center, the boxes are arranged in respective order
-finalboxes = []
-for i in range(len(row)):
-    lis=[]
-    for k in range(countcol):
-        lis.append([])
-    for j in range(len(row[i])):
-        diff = abs(center-(row[i][j][0]+row[i][j][2]/4))
-        minimum = min(diff)
-        indexing = list(diff).index(minimum)
-        lis[indexing].append(row[i][j])
-    finalboxes.append(lis)
+# each question has 5 possible answers, to loop over the
+# question in batches of 5
+for (q, i) in enumerate(np.arange(0, len(questionCnts), 5)):
+	# sort the contours for the current question from
+	# left to right, then initialize the index of the
+	# bubbled answer
+	cnts = contours.sort_contours(questionCnts[i:i + 5])[0]
+	bubbled = None
 
-#from every single image-based cell/box the strings are extracted via pytesseract and stored in a list
-outer=[]
-for i in range(len(finalboxes)):
-    for j in range(len(finalboxes[i])):
-        inner=''
-        if(len(finalboxes[i][j])==0):
-            outer.append(' ')
-        else:
-            for k in range(len(finalboxes[i][j])):
-                y,x,w,h = finalboxes[i][j][k][0],finalboxes[i][j][k][1], finalboxes[i][j][k][2],finalboxes[i][j][k][3]
-                finalimg = bitnot[x:x+h, y:y+w]
-                kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 1))
-                border = cv2.copyMakeBorder(finalimg,2,2,2,2,   cv2.BORDER_CONSTANT,value=[255,255])
-                resizing = cv2.resize(border, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
-                dilation = cv2.dilate(resizing, kernel,iterations=1)
-                erosion = cv2.erode(dilation, kernel,iterations=1)
+	# loop over the sorted contours
+	for (j, c) in enumerate(cnts):
+		# construct a mask that reveals only the current
+		# "bubble" for the question
+		mask = np.zeros(thresh.shape, dtype="uint8")
+		cv2.drawContours(mask, [c], -1, 255, -1)
 
-                
-                out = pytesseract.image_to_string(erosion)
-                if(len(out)==0):
-                    out = pytesseract.image_to_string(erosion, config='--psm 3')
-                inner = inner +" "+ out
-            outer.append(inner)
+		# apply the mask to the thresholded image, then
+		# count the number of non-zero pixels in the
+		# bubble area
+		mask = cv2.bitwise_and(thresh, thresh, mask=mask)
+		total = cv2.countNonZero(mask)
 
-#Creating a dataframe of the generated OCR list
-arr = np.array(outer)
-dataframe = pd.DataFrame(arr.reshape(len(row),countcol))
-print(dataframe)
-data = dataframe.style.set_properties(align="left")
-#Converting it in a excel-file
-data.to_excel("output.xlsx")
+		# if the current total has a larger number of total
+		# non-zero pixels, then we are examining the currently
+		# bubbled-in answer
+		if bubbled is None or total > bubbled[0]:
+			bubbled = (total, j)
+
+            	# initialize the contour color and the index of the
+	# *correct* answer
+	color = (0, 0, 255)
+	k = ANSWER_KEY[q]
+
+	# check to see if the bubbled answer is correct
+	if k == bubbled[1]:
+		color = (0, 255, 0)
+		correct += 1
+
+	# draw the outline of the correct answer on the test
+	cv2.drawContours(paper, [cnts[k]], -1, color, 3)
+
+# grab the test taker
+score = correct * 2
+print("[INFO] score: {:.2f}".format(score))
+cv2.putText(paper, "{:.2f}".format(score), (10, 30),
+	cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
+cv2.imshow("Correction", paper)
+cv2.waitKey(0)

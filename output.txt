@@ -1,7 +1,0 @@
-----------------------
-|Resultado del examen|
-----------------------
-Correctas:  2
-Incorrectas:  3
-Blancas:  4
-Puntaje 0
