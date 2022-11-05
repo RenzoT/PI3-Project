@@ -57,9 +57,7 @@ def parameters(root):
             for i in range(0, nroQuestions):
                 ANSWER_KEY[i] = ord((answers[i].get()).upper())-65
 
-            print(ANSWER_KEY)
-
-            image = cv2.imread("cartillas/prueba.jpg")
+            image = cv2.imread("cartillas/prueba8.jpg")
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             blurred = cv2.GaussianBlur(gray, (5, 5), 0)
             edged = cv2.Canny(blurred, 75, 200)
@@ -123,11 +121,11 @@ def parameters(root):
                     color = (0, 255, 0)
                     correct += 1
 
-                # draw the outline of the correct answer on the test
                 cv2.drawContours(paper, [cnts[k]], -1, color, 3)
 
-            # grab the test taker
             score = correct * vCorrect - (nroQuestions - correct) * vIncorrect - vBlank * (nroQuestions - correct - vCorrect)
+            if score < 0:
+                score = 0
             print("[INFO] score: {:.2f}".format(score))
             cv2.putText(paper, "Puntaje: {:.2f}".format(score), (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
