@@ -9,7 +9,7 @@ import imutils
 import cv2
 import os
 
-def correct_cart(file, ANSWER_KEY, nroQuestions, vCorrect, vIncorrect, vBlank):
+def correct_cart(file, ANSWER_KEY, nroQuestions, vCorrect, vIncorrect, vBlank, fileName):
     image = cv2.imread(file)
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
@@ -82,8 +82,11 @@ def correct_cart(file, ANSWER_KEY, nroQuestions, vCorrect, vIncorrect, vBlank):
     print("[INFO] score: {:.2f}".format(score))
     cv2.putText(paper, "Puntaje: {:.2f}".format(score), (10, 30),
         cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
-    cv2.imshow("Correction", paper)
-    cv2.waitKey(0)
+    save_path = "corregidas/rv_" + fileName
+    cv2.imwrite(save_path,paper)
+    # cv2.imshow("Correction", paper)
+    # cv2.waitKey(0)
+
 
     return score
 
@@ -151,7 +154,7 @@ def parameters(root):
 
             for file_name in files_names:
                 image_path = input_images_path + "/" + file_name
-                score = correct_cart(image_path, ANSWER_KEY, nroQuestions, vCorrect, vIncorrect, vBlank)
+                score = correct_cart(image_path, ANSWER_KEY, nroQuestions, vCorrect, vIncorrect, vBlank, file_name)
                 sheet.cell(row=row, column=1).value = file_name[:-4]
                 sheet.cell(row=row, column=2).value = score
                 row += 1
