@@ -79,14 +79,11 @@ def correct_cart(file, ANSWER_KEY, nroQuestions, vCorrect, vIncorrect, vBlank, f
     score = correct * vCorrect - (nroQuestions - correct) * vIncorrect - vBlank * (nroQuestions - correct - vCorrect)
     if score < 0:
         score = 0
-    print("[INFO] score: {:.2f}".format(score))
+    print("[INFO] Puntaje: {:.2f}".format(score))
     cv2.putText(paper, "Puntaje: {:.2f}".format(score), (10, 30),
         cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
     save_path = "corregidas/rv_" + fileName
     cv2.imwrite(save_path,paper)
-    # cv2.imshow("Correction", paper)
-    # cv2.waitKey(0)
-
 
     return score
 
@@ -160,6 +157,13 @@ def parameters(root):
                 row += 1
             
             wb.save(sheet_title + ".xlsx")
+            confirmation = Toplevel()
+            confirmation.title("Confirmación")
+            confirmation.configure(background='white')
+            Label(confirmation, text="¡Exámenes corregidos exitosamente!", font=("Futura Bk BT", 23),bg="white").pack()
+            Button(confirmation, text="Aceptar", command= confirmation.destroy).pack(side= BOTTOM)
+
+
 
         def set_questions():
             for i in range(1, nroQuestions + 1):
