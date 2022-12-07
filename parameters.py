@@ -106,8 +106,7 @@ def parameters(root):
     Label(param, text="¿Cuántos puntos vale una\nrespuesta correcta?", font=("Futura Bk BT", 23),bg="white").grid(row=3, column=0,padx=60, pady=20,sticky=W)
 
     Label(param, text="¿Cuántos puntos disminuye una\nrespuesta incorrecta?", font=("Futura Bk BT", 23),bg="white").grid(row=4,padx=60, column=0, pady=20,sticky=W)
-    Label(param, text="¿Cuántos puntos disminuye una\nrespuesta en blanco?", font=("Futura Bk BT", 23),bg="white").grid(row=5,padx=60, column=0, pady=20,sticky=W)
-
+ 
     #Entrys
     txtQuestions = Entry(param, width=5, bg="#ECECEC", font= ("Futura Bk BT", 23))
     txtQuestions.grid(row=1, column=1, pady=20,sticky=W)
@@ -115,8 +114,6 @@ def parameters(root):
     txtCorrect.grid(row=3, column=1, pady=20,sticky=W)
     txtIncorrect = Entry(param, width=5, bg="#ECECEC", font= ("Futura Bk BT", 23))
     txtIncorrect.grid(row=4, column=1, pady=20,sticky=W)
-    txtBlank = Entry(param, width=5, bg="#ECECEC", font= ("Futura Bk BT", 23))
-    txtBlank.grid(row=5, column=1, pady=20,sticky=W)
 
     def puntaje_window():
         puntaje = Toplevel()
@@ -151,7 +148,7 @@ def parameters(root):
 
             for file_name in files_names:
                 image_path = input_images_path + "/" + file_name
-                score = correct_cart(image_path, ANSWER_KEY, nroQuestions, vCorrect, vIncorrect, vBlank, file_name)
+                score = correct_cart(image_path, ANSWER_KEY, nroQuestions, vCorrect, vIncorrect, 0, file_name)
                 sheet.cell(row=row, column=1).value = file_name[:-4]
                 sheet.cell(row=row, column=2).value = score
                 row += 1
@@ -181,7 +178,6 @@ def parameters(root):
         set_questions()
         vCorrect = float(txtCorrect.get())
         vIncorrect = float(txtIncorrect.get())
-        vBlank = float(txtBlank.get())
 
     #Buttons
     Button(param, text="Siguiente", font=("Futura Bk BT", 23), bg="#42B4FF", fg="white", command=puntaje_window).grid(row=6, column=2, pady=20,sticky=W)
